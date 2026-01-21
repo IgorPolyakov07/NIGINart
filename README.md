@@ -637,7 +637,7 @@ class BaseParser:
 - KPI метрики платформы
 - Графики динамики (временные ряды)
 - Таблицы с детальными данными
-- Экспорт в Excel
+
 
 ### Компоненты
 
@@ -657,15 +657,6 @@ chart = ChartBuilder.line_chart(df, x='date', y='followers', title='Рост')
 st.plotly_chart(chart, use_container_width=True)
 ```
 
-### Кэширование
-
-Dashboard использует `@st.cache_data` для оптимизации:
-
-```python
-@st.cache_data(ttl=300)  # 5 минут
-def fetch_metrics_cached(platform: str, start_date, end_date):
-    return api_client.get_metrics(platform, start_date, end_date)
-```
 
 ---
 
@@ -916,37 +907,4 @@ docker-compose exec app playwright install chromium
 
 ---
 
-## 📝 Changelog
 
-### v1.0.0 (2024-01-20)
-- Поддержка 8 платформ
-- OAuth для TikTok, Instagram, Pinterest
-- Streamlit Dashboard с интерактивными графиками
-- Автоматический сбор метрик по расписанию
-- Export в Excel
-- Docker Compose для быстрого запуска
-
----
-
-## 📄 Лицензия
-
-MIT License
-
----
-
-## 👥 Контакты
-
-Для вопросов по проекту:
-- GitHub Issues: [создать issue](https://github.com/yourusername/dashboard_v2/issues)
-- Email: support@niginart.com
-
----
-
-## 🎯 TODO / Roadmap
-
-- [ ] Добавить Telegram Bot для уведомлений
-- [ ] Реализовать алерты при падении метрик
-- [ ] Добавить A/B тестирование контента
-- [ ] ML модели для прогнозирования engagement
-- [ ] Поддержка нескольких брендов (multi-tenancy)
-- [ ] Mobile приложение (React Native)
