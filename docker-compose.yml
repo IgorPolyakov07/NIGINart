@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: social_analytics_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-social_analytics}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - social_analytics_network
+
+  # FastAPI Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: social_analytics_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-social_analytics}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-mock_youtube_key}
+      VK_ACCESS_TOKEN: ${VK_ACCESS_TOKEN:-mock_vk_token}
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID:-12345678}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH:-mock_telegram_hash}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      COLLECT_INTERVAL_HOURS: ${COLLECT_INTERVAL_HOURS:-6}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+
+      # TikTok Display API
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET}
+      TIKTOK_REDIRECT_URI: ${TIKTOK_REDIRECT_URI:-http://localhost:8000/api/v1/oauth/tiktok/callback}
+
+      # Instagram Graph API
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-http://localhost:8000/api/v1/oauth/instagram/callback}
+      FACEBOOK_GRAPH_API_VERSION: ${FACEBOOK_GRAPH_API_VERSION:-v21.0}
+      INSTAGRAM_SYSTEM_USER_TOKEN: ${INSTAGRAM_SYSTEM_USER_TOKEN}
+
+      # Security - Token encryption for OAuth
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./scripts:/app/scripts
+      - ./telegram_session.session:/app/telegram_session.session
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - social_analytics_network
+
+  # Streamlit Dashboard (placeholder for Phase 6)
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: social_analytics_dashboard
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      API_BASE_URL: http://app:8000/api/v1
+      PYTHONPATH: /app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app/dashboard
+    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    networks:
+      - social_analytics_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  social_analytics_network:
+    driver: bridge
